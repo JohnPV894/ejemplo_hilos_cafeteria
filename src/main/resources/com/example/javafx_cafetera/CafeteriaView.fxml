@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.javafx_cafetera.CafeteriaController" prefHeight="700" prefWidth="1000">
+    <top>
+        <ToolBar prefHeight="60" style="-fx-font-size: 12; -fx-padding: 10;">
+            <Button fx:id="botonIniciar" text="▶ Iniciar Simulación" style="-fx-font-size: 13; -fx-padding: 8;" onMouseClicked="#alIniciarClicked"/>
+            <Button fx:id="botonReiniciar" text="🔄 Reiniciar Simulación" style="-fx-font-size: 13; -fx-padding: 8;" onMouseClicked="#alReiniciarClicked"/>
+            <Button fx:id="botonAnadirCliente" text="➕ Añadir Cliente" style="-fx-font-size: 13; -fx-padding: 8;" onMouseClicked="#alAnadirClienteClicked"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Simulación Cafetería - JavaFX (MVC)" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+        </ToolBar>
+    </top>
+
+    <center>
+        <!-- Nodo raíz del contenido con ID para estilos -->
+        <SplitPane fx:id="contenedorPrincipal" id="contenedorPrincipal" orientation="VERTICAL" dividerPositions="0.7">
+            <!-- Panel Superior: Clientes y Camareros -->
+            <SplitPane dividerPositions="0.5" prefHeight="400">
+                <!-- Panel Izquierdo: Clientes -->
+                <VBox spacing="8" style="-fx-border-color: #ddd; -fx-border-width: 1;">
+                    <padding>
+                        <Insets top="10" right="10" bottom="10" left="10"/>
+                    </padding>
+                    <Label text="👥 Clientes" style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+                    <ListView fx:id="listaClientes" prefHeight="350" style="-fx-font-size: 11;"/>
+                </VBox>
+
+                <!-- Panel Derecho: Camareros -->
+                <VBox spacing="8" style="-fx-border-color: #ddd; -fx-border-width: 1;">
+                    <padding>
+                        <Insets top="10" right="10" bottom="10" left="10"/>
+                    </padding>
+                    <Label text="👔 Camareros" style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+                    <ListView fx:id="listaCamareros" prefHeight="350" style="-fx-font-size: 11;"/>
+                </VBox>
+            </SplitPane>
+
+            <!-- Panel Inferior: Log de Eventos -->
+            <VBox spacing="8" style="-fx-border-color: #ddd; -fx-border-width: 1;">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
+                </padding>
+                <Label text="📋 Registro de Eventos" style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+                <TextArea fx:id="areaRegistro" prefHeight="200" editable="false" wrapText="true"
+                          style="-fx-font-family: 'Courier New'; -fx-font-size: 14; -fx-text-fill: #333;"/>
+            </VBox>
+        </SplitPane>
+    </center>
+
+    <padding>
+        <Insets top="5" right="5" bottom="5" left="5"/>
+    </padding>
+</BorderPane>

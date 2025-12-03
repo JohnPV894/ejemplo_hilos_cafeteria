@@ -1,0 +1,15 @@
+/* Estilos globales de la aplicación */
+
+#contenedorPrincipal {
+    -fx-background-color: gray; /* gris oscuro */
+}
+
+/* Ajustes para el área de registro */
+.text-area {
+    -fx-font-size: 14px;
+}
+
+/* Botones */
+.button {
+    -fx-font-size: 13px;
+}
