@@ -48,18 +48,24 @@ public class Camarero extends Thread {
                 Cliente cliente = cafeteria.obtenerClienteDesCola(500);
 
                 if (cliente != null) {
-                    estado = "Sirviendo a " + cliente.getNombre();
-                    cafeteria.registrar(nombre + " atiende a " + cliente.getNombre() + ".");
+                    // Tomar pedido al cliente
+                    estado = "Tomando pedido a " + cliente.getNombre();
+                    cafeteria.registrar(nombre + " está tomando el pedido de " + cliente.getNombre() + ".");
 
-                    // Simular tiempo de preparación del café (2-8 segundos)
-                    Thread.sleep(2000 + (int) (Math.random() * 6000));
+                    // Simular tiempo de toma de pedido
+                    Thread.sleep(1000);
 
-                    // Notificar cliente atendido (usar wait/notify en el cliente)
-                    cliente.notificarAtendido();
-                    cafeteria.notificarClienteAtendido(cliente, nombre);
-                    estado = "Disponible";
+                    // Crear objeto Pedido y añadirlo a la cola de pedidos pendientes
+                    Pedido pedido = new Pedido(cliente, "Café Simple");
+                    cafeteria.encolarPedido(pedido);
+
+                    // Cambiar estado del cliente a "Esperando café"
+                    cliente.marcarPedidoTomado();
+
+                    estado = "Esperando café";
+                    cafeteria.registrar(nombre + " ha puesto el pedido de " + cliente.getNombre() + " en la cola de preparación.");
                 } else {
-                    // No hay cliente en este momento, pero seguimos esperando
+                    // No hay cliente en este momento, seguimos esperando
                     estado = "Esperando";
                     Thread.sleep(200);
                 }

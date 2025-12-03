@@ -1,0 +1,754 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+
+\geometry{margin=2.5cm}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textit{Simulación de Cafetería Concurrente}}
+\lhead{\textit{Documentación Técnica}}
+\cfoot{\thepage}
+
+% Configuración de listings para código Java
+\lstset{
+    language=Java,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\bfseries\color{blue},
+    commentstyle=\itshape\color{gray},
+    stringstyle=\color{red},
+    breaklines=true,
+    showspaces=false,
+    showstringspaces=false,
+    frame=single,
+    backgroundcolor=\color{white},
+    rulecolor=\color{black}
+}
+
+\title{%
+    \textbf{Simulacion de Cafeteria Concurrente} \\
+    \large Documentacion Tecnica \\
+    \normalsize Patron Productor-Consumidor en JavaFX
+}
+\author{Proyecto de Concurrencia en Java}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\newpage
+\tableofcontents
+\newpage
+
+% ========== 1. INTRODUCCIÓN ==========
+% ========== 1. INTRODUCCIÓN ==========
+\section{Introduccion}
+
+Este es un proyecto bacano que simula una cafeteria con clientes, camareros y baristas todo funcionando con hilos en Java. La idea es ver como se coordina todo sin que se armen pleitos (race conditions) entre los hilos.
+
+Lo chévere es que separamos responsabilidades: los camareros atienden clientes y crean pedidos, los baristas preparan el cafe. Todo se comunica por dos colas que se manejan sin problemas gracias a la sincronización.
+
+Es basicalmente un ejercicio para entender como funcionan start(), run(), join(), sleep(), synchronized, wait() y notify(). En la interfaz se ve todo en tiempo real, asi que puedes ver como los hilos se la montan para coordinar el camello de una cafeteria.
+
+\newpage
+
+% ========== 2. HISTORIA DE USUARIO / CASOS DE USO ==========
+% ========== 2. HISTORIA DE USUARIO / CASOS DE USO ==========
+\section{Casos de Uso}
+
+\subsection{Los Actores}
+
+\begin{enumerate}
+    \item \textbf{Cliente}: Llega a la cafeteria, espera su turno con paciencia limitada (5-15 segundos).
+    \item \textbf{Camarero}: Atiende clientes, toma sus pedidos y los manda a la cola de preparacion.
+    \item \textbf{Barista}: Prepara los pedidos y avisa cuando estan listos.
+    \item \textbf{Sistema}: La cafeteria es quien coordina todo esto.
+\end{enumerate}
+
+\subsection{El Viaje de un Cliente}
+
+\begin{enumerate}
+    \item Llega con retardo aleatorio.
+    \item Se encola esperando camarero.
+    \item Camarero lo atiende y crea un pedido.
+    \item Cliente entra en wait() esperando a que le llamen.
+    \item Barista prepara el cafe.
+    \item Barista lo notify(), cliente se despierta.
+    \item Cliente se va feliz (o furioso si se aburrio esperando).
+\end{enumerate}
+
+\newpage
+
+% ========== 3. REQUISITOS FUNCIONALES ==========
+\section{Requisitos Funcionales}
+
+\subsection{Las Dos Colas}
+
+Tenemos dos colas que funcionan independientemente:
+
+\begin{itemize}
+    \item \textbf{Cola de Clientes}: Donde los clientes esperan a que los atienda un camarero.
+    \item \textbf{Cola de Pedidos}: Donde se acumulan los pedidos que estan esperando a ser preparados (maximo 10).
+\end{itemize}
+
+\subsection{Que Hace el Camarero}
+
+\begin{itemize}
+    \item Toma un cliente de la cola.
+    \item Crea un Pedido con ese cliente.
+    \item Lo mete en la cola de pedidos.
+    \item Se marca como ``Esperando cafe''.
+\end{itemize}
+
+\subsection{Que Hace el Barista}
+
+\begin{itemize}
+    \item Extrae un pedido de la cola.
+    \item Simula preparacion (2-8 segundos).
+    \item Llama notify() en el cliente para despertarlo.
+    \item Se marca como ``Disponible''.
+\end{itemize}
+
+\subsection{La Interfaz}
+
+\begin{itemize}
+    \item Barra de pedidos: muestra cuantos pedidos estan en cola (visual 0-10).
+    \item Barra de paciencia: cada cliente muestra una barita mostrando cuanto tiempo le queda antes de aburrirse.
+    \item Log de eventos: muestra todo lo que pasa en tiempo real.
+\end{itemize}
+
+\newpage
+
+% ========== 4. REQUISITOS NO FUNCIONALES ==========
+\section{Requisitos No Funcionales}
+
+\subsection{Stack Tecnologico}
+
+\begin{itemize}
+    \item Java 11+
+    \item JavaFX 17+
+    \item Maven
+    \item FXML y CSS
+\end{itemize}
+
+\subsection{Concurrencia}
+
+\begin{itemize}
+    \item Uso obligatorio de synchronized para proteger datos compartidos.
+    \item Uso de wait() y notify() para coordinar hilos.
+    \item BlockingQueue para manejar colas de forma segura.
+\end{itemize}
+
+
+
+\newpage
+
+% ========== 5. STACK TECNOLÓGICO ==========
+\section{Stack Tecnologico}
+
+Java con JavaFX para la interfaz. Maven para compilar. Eso es basicamente todo.
+
+\begin{lstlisting}
+<dependency>
+    <groupId>org.openjfx</groupId>
+    <artifactId>javafx-controls</artifactId>
+    <version>17.0.1</version>
+</dependency>
+\end{lstlisting}
+
+\newpage
+
+% ========== 6. PATRONES DE DISEÑO ==========
+\section{Patrones de Diseño}
+
+\subsection{MVC (Modelo-Vista-Controlador)}
+
+\begin{itemize}
+    \item \textbf{Modelo (Cafeteria.java)}: Tiene la logica, las colas, los hilos. Sin JavaFX.
+    \item \textbf{Vista (CafeteriaView.fxml)}: Solo define componentes visuales en XML.
+    \item \textbf{Controlador (CafeteriaController.java)}: Conecta clicks de botones con la logica, actualiza la UI.
+\end{itemize}
+
+\subsection{Productor-Consumidor}
+
+El Camarero produce pedidos metiéndolos en colaPedidosPendientes. El Barista consume esos pedidos y los procesa. La BlockingQueue maneja la sincronizacion sola.
+
+\begin{itemize}
+    \item Camarero: \texttt{put()} un Pedido. Si la cola esta llena, espera.
+    \item Barista: \texttt{poll(timeout)} extrae Pedidos. Si no hay, retorna null.
+    \item Cliente: \texttt{wait()} en bloque synchronized hasta que Barista lo \texttt{notify()}.
+\end{itemize}
+
+\newpage
+
+% ========== 7. ESTRUCTURA DEL PROYECTO ==========
+\section{Estructura del Proyecto}
+
+\begin{lstlisting}
+ejemplo_hilos_cafeteria/
+├── pom.xml
+├── mvnw
+├── mvnw.cmd
+└── src/main/java/com/example/javafx_cafetera/
+    ├── Cafeteria.java
+    ├── Cliente.java
+    ├── Camarero.java
+    ├── Barista.java
+    ├── Pedido.java
+    ├── CafeteriaController.java
+    └── recursos...
+\end{lstlisting}
+
+\newpage
+
+\newpage
+
+% ========== 8. CLASES PRINCIPALES ==========
+\section{Clases Principales}
+
+\subsection{Cafeteria.java}
+
+Coordina todo. Tiene las dos colas, maneja todos los hilos, y actualiza la interfaz cada 500ms.
+
+\subsection{Cliente.java}
+
+Llega con retardo, se encola, se mete en wait() esperando que el barista lo despierte con notify(). Tiene timeout de paciencia (5-15 segs).
+
+\subsection{Camarero.java}
+
+Extrae clientes, crea pedidos y los mete en la cola de pedidos.
+
+\subsection{Barista.java}
+
+Extrae pedidos de la cola, simula preparacion 2-8 segundos, y despierta al cliente con notify().
+
+\subsection{Pedido.java}
+
+Solo almacena Cliente + String bebida.
+
+\newpage
+
+% ========== 9. CONCURRENCIA ==========
+\section{Mecanismos de Concurrencia}
+
+Se usan explícitamente estos métodos:
+
+\begin{itemize}
+    \item \texttt{start()}: Inicia un hilo.
+    \item \texttt{run()}: La logica que ejecuta el hilo.
+    \item \texttt{join()}: Espera a que un hilo termine.
+    \item \texttt{sleep()}: Pausa el hilo X milisegundos.
+    \item \texttt{synchronized}: Protege secciones criticas.
+    \item \texttt{wait()}: El hilo espera hasta ser notificado o timeout.
+    \item \texttt{notify()}: Despierta un hilo en wait().
+    \item \texttt{volatile}: Variables visibles entre todos los hilos.
+    \item \texttt{BlockingQueue}: Colas thread-safe con put() y poll().
+\end{itemize}
+
+\newpage
+
+% ========== 10. CONCLUSIÓN ==========
+\section{Conclusion}
+
+Es basicamente un ejercicio de sincronizacion donde camareros producen pedidos y baristas los consumen, usando dos colas coordinadas. Los clientes esperan con timeout y son despertados cuando el barista les notifica. Todo muy sincronizado, sin race conditions ni deadlocks si se hace bien.
+
+La interfaz muestra todo en tiempo real: vés como los clientes estan esperando con una barra que baja segun su paciencia se agota, los camareros atienden, los baristas preparan, y la cola de pedidos se llena y vacia.
+
+\subsubsection{Responsabilidades}
+
+\begin{itemize}
+    \item Crear e iniciar todos los hilos (camareros, baristas, clientes).
+    \item Mantener las dos colas bloqueantes: \texttt{cola} y \texttt{colaPedidosPendientes}.
+    \item Sincronizar el acceso a listas compartidas (\texttt{camareros}, \texttt{baristas}, \texttt{clientes}).
+    \item Detener e interrumpir hilos de forma segura con \texttt{join()}.
+    \item Registrar eventos con timestamp.
+    \item Actualizar la interfaz cada 500 ms.
+\end{itemize}
+
+\subsubsection{Métodos Críticos}
+
+\begin{description}
+    \item[\texttt{iniciarSimulacion()}] Crea 5 camareros, 3 baristas, 10 clientes. Inicia thread actualizador.
+    
+    \item[\texttt{detenerSimulacion()}] Llama a \texttt{interrupt()} en cada camarero y barista, luego \texttt{join(1000)}. Limpia colas.
+    
+    \item[\texttt{encolarCliente(Cliente c)}] Inserta cliente en \texttt{cola} con \texttt{put()}. Bloquea si está llena.
+    
+    \item[\texttt{obtenerClienteDesCola(long timeout)}] Extrae cliente con \texttt{poll(timeout, MILLISECONDS)}. Retorna null si timeout.
+    
+    \item[\texttt{encolarPedido(Pedido p)}] Inserta pedido en \texttt{colaPedidosPendientes} con \texttt{put()}.
+    
+    \item[\texttt{obtenerPedidoDesCola(long timeout)}] Extrae pedido con \texttt{poll(timeout, MILLISECONDS)}.
+    
+    \item[\texttt{actualizarInterfaz()}] Construye listas de estados, obtiene tamaño de cola, y llama a \texttt{Platform.runLater()} para actualizar vistas.
+\end{description}
+
+\subsubsection{Sincronización Implementada}
+
+\begin{itemize}
+    \item \texttt{BlockingQueue}: Sincronización interna para \texttt{cola} y \texttt{colaPedidosPendientes}.
+    \item \texttt{Collections.synchronizedList()}: Para \texttt{camareros}, \texttt{baristas}, \texttt{clientes}.
+    \item \texttt{volatile boolean enEjecucion}: Flag para control de bucles.
+    \item Bloque \texttt{synchronized} al recorrer listas para iterar de forma segura.
+\end{itemize}
+
+\subsection{Cliente.java — Hilo Esperador}
+
+\subsubsection{Responsabilidades}
+
+\begin{itemize}
+    \item Llegar a la cafetería con retardo aleatorio.
+    \item Encolarse esperando ser atendido.
+    \item Entrar en \texttt{wait(pacienciaMs)} con timeout.
+    \item Ser despertado por el barista o perder paciencia.
+    \item Registrar su viaje (llegada, encolamiento, atención, salida).
+\end{itemize}
+
+\subsubsection{Atributos Críticos}
+
+\begin{lstlisting}
+private final long pacienciaMs;           // 5-15 segundos
+private volatile long tiempoInicioEspera; // Para barra visual
+private boolean servido = false;          // Flag de notificación
+\end{lstlisting}
+
+\subsubsection{Método run() — Flujo Principal}
+
+\begin{enumerate}
+    \item Dormir (llegada aleatoria).
+    \item Cambiar estado a ``Llegó''.
+    \item Llamar a \texttt{cafeteria.encolarCliente(this)}.
+    \item Registrar \texttt{tiempoInicioEspera = System.currentTimeMillis()}.
+    \item Entrar en bloque \texttt{synchronized(this)} y llamar a \texttt{wait(restante)}.
+    \item Si es notificado: estado ``Atendido'', se va.
+    \item Si se agota paciencia: estado ``Se fue sin café'', se va.
+\end{enumerate}
+
+\subsubsection{Métodos Públicos}
+
+\begin{description}
+    \item[\texttt{getPacienciaMs()}] Retorna la paciencia total del cliente.
+    
+    \item[\texttt{getTiempoInicioEspera()}] Retorna el timestamp de inicio (usado para calcular barra de progreso).
+    
+    \item[\texttt{marcarPedidoTomado()}] Llamado por el camarero; cambia estado a ``Esperando café''.
+    
+    \item[\texttt{notificarAtendido()}] Llamado por el barista. Ejecuta \texttt{synchronized(this)} + \texttt{notify()}.
+\end{description}
+
+\subsection{Camarero.java — Productor}
+
+\subsubsection{Responsabilidades}
+
+\begin{itemize}
+    \item Extrae un \texttt{Cliente} de la cola de clientes.
+    \item Cambia estado a ``Tomando pedido a [Cliente]''.
+    \item Crea un \texttt{Pedido} con el cliente.
+    \item Inserta el \texttt{Pedido} en \texttt{colaPedidosPendientes}.
+    \item Cambia estado a ``Esperando café''.
+    \item Repite hasta que la simulación termine.
+\end{itemize}
+
+\subsubsection{Atributos}
+
+\begin{lstlisting}
+private final String nombre;
+private final Cafeteria cafeteria;
+private volatile String estado = "Disponible";
+\end{lstlisting}
+
+\subsubsection{Método run() — Lógica Productor}
+
+\begin{lstlisting}
+while (cafeteria.estaEnEjecucion() && !Thread.currentThread().isInterrupted()) {
+    try {
+        Cliente cliente = cafeteria.obtenerClienteDesCola(500);
+        if (cliente != null) {
+            estado = "Tomando pedido a " + cliente.getNombre();
+            Thread.sleep(1000);
+            
+            Pedido pedido = new Pedido(cliente, "Café Simple");
+            cafeteria.encolarPedido(pedido); // BlockingQueue.put()
+            
+            cliente.marcarPedidoTomado();
+            estado = "Esperando café";
+        } else {
+            estado = "Esperando";
+            Thread.sleep(200);
+        }
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+    }
+}
+\end{lstlisting}
+
+\subsection{Barista.java — Consumidor}
+
+\subsubsection{Responsabilidades}
+
+\begin{itemize}
+    \item Extrae un \texttt{Pedido} de la \texttt{colaPedidosPendientes}.
+    \item Cambia estado a ``Preparando café para [Cliente]''.
+    \item Simula tiempo de preparación (2-8 segundos con \texttt{Thread.sleep()}).
+    \item Notifica al cliente llamando a \texttt{cliente.notificarAtendido()}, que ejecuta \texttt{notify()}.
+    \item Cambia estado a ``Disponible''.
+    \item Repite hasta que la simulación termine.
+\end{itemize}
+
+\subsubsection{Atributos}
+
+\begin{lstlisting}
+private final String nombre;
+private final Cafeteria cafeteria;
+private volatile String estado = "Disponible";
+\end{lstlisting}
+
+\subsubsection{Método run() — Lógica Consumidor}
+
+\begin{lstlisting}
+while (cafeteria.estaEnEjecucion() && !Thread.currentThread().isInterrupted()) {
+    try {
+        Pedido pedido = cafeteria.obtenerPedidoDesCola(1000);
+        if (pedido != null) {
+            Cliente cliente = pedido.getCliente();
+            estado = "Preparando café para " + cliente.getNombre();
+            
+            long duracion = 2000 + (int) (Math.random() * 6000);
+            Thread.sleep(duracion);
+            
+            cliente.notificarAtendido(); // Llama a notify()
+            
+            estado = "Disponible";
+        } else {
+            estado = "Esperando pedidos";
+            Thread.sleep(200);
+        }
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+    }
+}
+\end{lstlisting}
+
+\subsection{Pedido.java — Objeto de Datos}
+
+Clase DTO (Data Transfer Object) simple que encapsula un pedido:
+
+\begin{lstlisting}
+public class Pedido {
+    private final Cliente cliente;
+    private final String bebida;
+    
+    public Pedido(Cliente cliente, String bebida) {
+        this.cliente = cliente;
+        this.bebida = bebida;
+    }
+    
+    public Cliente getCliente() {
+        return cliente;
+    }
+    
+    public String getBebida() {
+        return bebida;
+    }
+}
+\end{lstlisting}
+
+\begin{itemize}
+    \item Inmutable: atributos \texttt{final}.
+    \item Sin lógica de negocio: solo almacenamiento.
+    \item Threadd-safe por diseño (sin estado mutable).
+\end{itemize}
+
+\subsection{CafeteriaController.java — Controlador JavaFX}
+
+\subsubsection{Responsabilidades}
+
+\begin{itemize}
+    \item Manejar eventos de botones (Iniciar, Reiniciar, Añadir Cliente).
+    \item Actualizar controles visuales desde el hilo de la UI.
+    \item Implementar \texttt{CellFactory} para renderizar barras de paciencia.
+    \item Mostrar barra de progreso de pedidos.
+    \item Sincronizar llamadas con \texttt{Platform.runLater()}.
+\end{itemize}
+
+\subsubsection{Campos FXML Inyectados}
+
+\begin{lstlisting}
+@FXML private ListView<Cliente> listaClientes;
+@FXML private ListView<String> listaCamareros;
+@FXML private ListView<String> listaBaristas;
+@FXML private ProgressBar barraPedidos;
+@FXML private Label labelPedidos;
+@FXML private TextArea areaRegistro;
+\end{lstlisting}
+
+\subsubsection{CellFactory para Barra de Paciencia}
+
+\begin{lstlisting}
+listaClientes.setCellFactory(
+    new javafx.util.Callback<ListView<Cliente>, ListCell<Cliente>>() {
+        @Override
+        public ListCell<Cliente> call(ListView<Cliente> param) {
+            return new ListCell<Cliente>() {
+                @Override
+                protected void updateItem(Cliente item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setGraphic(null);
+                    } else {
+                        HBox celda = new HBox(8);
+                        Label etiqueta = new Label(
+                            item.getNombre() + " - " + item.getEstado()
+                        );
+                        ProgressBar barraEspera = new ProgressBar();
+                        
+                        if (item.getTiempoInicioEspera() > 0) {
+                            long transcurrido = 
+                                System.currentTimeMillis() 
+                                - item.getTiempoInicioEspera();
+                            double progreso = 
+                                (double) transcurrido / item.getPacienciaMs();
+                            barraEspera.setProgress(
+                                Math.min(progreso, 1.0)
+                            );
+                        }
+                        
+                        celda.getChildren().addAll(etiqueta, barraEspera);
+                        setGraphic(celda);
+                    }
+                }
+            };
+        }
+    }
+);
+\end{lstlisting}
+
+\subsubsection{Método actualizarBarraPedidos()}
+
+\begin{lstlisting}
+public void actualizarBarraPedidos(int actual, int maximo) {
+    if (Platform.isFxApplicationThread()) {
+        double progreso = (double) actual / maximo;
+        barraPedidos.setProgress(Math.min(progreso, 1.0));
+        labelPedidos.setText("Pedidos: " + actual + "/" + maximo);
+    } else {
+        Platform.runLater(() -> { /* mismo código */ });
+    }
+}
+\end{lstlisting}
+
+\newpage
+
+% ========== 9. MECANISMOS DE CONCURRENCIA IMPLEMENTADOS ==========
+\section{Mecanismos de Concurrencia Implementados}
+
+Esta sección detalla el uso explícito de cada mecanismo de concurrencia solicitado:
+
+\subsection{start()}
+
+Inicia la ejecución de un hilo llamando automáticamente a \texttt{run()}:
+
+\begin{lstlisting}
+// En Cafeteria.iniciarSimulacion()
+Camarero c = new Camarero("Camarero-" + i, this);
+camareros.add(c);
+c.start();  // Inicia el hilo
+\end{lstlisting}
+
+\subsection{run()}
+
+Contiene la lógica que ejecuta el hilo. Está implementado en \texttt{Cliente}, \texttt{Camarero} y \texttt{Barista}:
+
+\begin{lstlisting}
+@Override
+public void run() {
+    // Lógica del hilo
+    while (/* condición */) {
+        // Trabajo
+    }
+}
+\end{lstlisting}
+
+\subsection{join()}
+
+Espera a que un hilo termine antes de continuar. Usado en \texttt{detenerSimulacion()}:
+
+\begin{lstlisting}
+for (Camarero c : new ArrayList<>(camareros)) {
+    c.interrupt();
+    try {
+        c.join(1000);  // Esperar hasta 1 segundo
+    } catch (InterruptedException ignored) {
+        Thread.currentThread().interrupt();
+    }
+}
+\end{lstlisting}
+
+\subsection{sleep()}
+
+Pausa la ejecución de un hilo durante un tiempo especificado:
+
+\begin{lstlisting}
+// En Cliente.run() - Llegada con retardo
+Thread.sleep(200 + (int) (Math.random() * 1500));
+
+// En Camarero.run() - Toma de pedido
+Thread.sleep(1000);
+
+// En Barista.run() - Preparación de café
+long duracion = 2000 + (int) (Math.random() * 6000);
+Thread.sleep(duracion);
+\end{lstlisting}
+
+\subsection{synchronized}
+
+Protege secciones críticas donde se accede a estado compartido:
+
+\subsubsection{Bloque sincronizado en Cliente}
+
+\begin{lstlisting}
+synchronized (this) {
+    tiempoInicioEspera = System.currentTimeMillis();
+    long inicio = tiempoInicioEspera;
+    long restante = pacienciaMs;
+    
+    while (!servido && restante > 0) {
+        wait(restante);
+        long ahora = System.currentTimeMillis();
+        restante = pacienciaMs - (ahora - inicio);
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Bloque sincronizado en Cafeteria (iteración segura)}
+
+\begin{lstlisting}
+synchronized (clientes) {
+    for (Cliente cl : clientes) {
+        // Acceder a clientes de forma segura
+    }
+}
+\end{lstlisting}
+
+\subsection{wait()}
+
+Hace que un hilo espere hasta ser notificado o timeout:
+
+\begin{lstlisting}
+// En Cliente.run()
+synchronized (this) {
+    while (!servido && restante > 0) {
+        wait(restante);  // Timeout decreciente
+        // ...
+    }
+}
+\end{lstlisting}
+
+\subsection{notify()}
+
+Despierta un hilo que está en \texttt{wait()}:
+
+\begin{lstlisting}
+// En Barista - Notificar al cliente
+cliente.notificarAtendido();
+
+// En Cliente.notificarAtendido()
+public void notificarAtendido() {
+    synchronized (this) {
+        servido = true;
+        notify();  // Despierta el Cliente del wait()
+    }
+}
+\end{lstlisting}
+
+\subsection{volatile}
+
+Asegura visibilidad de cambios entre hilos sin sincronización explícita:
+
+\begin{lstlisting}
+private volatile String estado = "Disponible";
+private volatile long tiempoInicioEspera = -1;
+private volatile boolean enEjecucion = false;
+\end{lstlisting}
+
+\subsection{BlockingQueue (put y poll con timeout)}
+
+Sincronización a alto nivel para colas:
+
+\begin{lstlisting}
+// En Camarero - Productor
+Pedido pedido = new Pedido(cliente, "Café Simple");
+cafeteria.encolarPedido(pedido);  // Llama a colaPedidosPendientes.put()
+
+// En Barista - Consumidor
+Pedido pedido = cafeteria.obtenerPedidoDesCola(1000);  // poll(1000, ms)
+\end{lstlisting}
+
+\newpage
+
+% ========== 10. CONCLUSIÓN ==========
+\section{Conclusión}
+
+La simulación de la cafetería concurrente es un proyecto bacano que materializa los conceptos fundamentales de programación multihilo de una manera muy chévere. Al implementar un modelo productor-consumidor real con una doble cola coordinada, se demuestra cómo manejar el ``camello'' de la sincronización en aplicaciones complejas.
+
+\subsection{Logros Principales}
+
+\begin{enumerate}
+    \item \textbf{Arquitectura MVC Limpia}: Separación clara entre modelo, vista y controlador.
+    \item \textbf{Patrón Productor-Consumidor}: Camareros producen pedidos, Baristas los consumen, sin condiciones de carrera.
+    \item \textbf{Visualización Intuitiva}: Barras de progreso para paciencia individual y carga de cola.
+    \item \textbf{Concurrencia Segura}: Uso correcto de \texttt{synchronized}, \texttt{wait()}, \texttt{notify()} y \texttt{BlockingQueue}.
+    \item \textbf{Responsividad}: Interfaz no se bloquea, actualiza cada 500 ms sin lag.
+\end{enumerate}
+
+\subsection{Puntos Clave Aprendidos}
+
+\begin{itemize}
+    \item Los mecanismos básicos de concurrencia (\texttt{synchronized}, \texttt{wait()}, \texttt{notify()}) son suficientes para aplicaciones complejas.
+    \item Las \texttt{BlockingQueue} simplifican la gestión de colas thread-safe.
+    \item La separación de responsabilidades es crucial para evitar deadlocks y condiciones de carrera.
+    \item JavaFX \texttt{Platform.runLater()} es esencial para actualizar la UI desde hilos de trabajo.
+\end{itemize}
+
+\subsection{Mejoras Futuras}
+
+\begin{itemize}
+    \item Implementar múltiples tipos de bebidas con diferentes tiempos de preparación.
+    \item Añadir estadísticas (clientes servidos, promedio de espera).
+    \item Implementar un sistema de prioridades para clientes VIP.
+    \item Persistencia en base de datos para auditoría de eventos.
+\end{itemize}
+
+\newpage
+
+\section*{Apéndice: Comandos Útiles}
+
+Para compilar el proyecto:
+
+\begin{lstlisting}[language=bash]
+cd ejemplo_hilos_cafeteria
+./mvnw clean package -DskipTests
+\end{lstlisting}
+
+Para ejecutar (si JavaFX está configurado):
+
+\begin{lstlisting}[language=bash]
+./mvnw javafx:run
+\end{lstlisting}
+
+Para compilar documentación desde este \texttt{.tex}:
+
+\begin{lstlisting}[language=bash]
+pdflatex DOCUMENTACION.tex
+\end{lstlisting}
+
+\end{document}

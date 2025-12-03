@@ -1,7 +1,6 @@
-/* Estilos globales de la aplicación */
 
 #contenedorPrincipal {
-    -fx-background-color: gray; /* gris oscuro */
+    -fx-background-color: #fffff; /* gris oscuro */
 }
 
 /* Ajustes para el área de registro */

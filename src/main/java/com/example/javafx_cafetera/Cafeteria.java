@@ -12,8 +12,13 @@ import java.util.stream.Collectors;
  */
 public class Cafeteria {
     private final BlockingQueue<Cliente> cola = new LinkedBlockingQueue<>();
+    private final BlockingQueue<Pedido> colaPedidosPendientes = new LinkedBlockingQueue<>();
     private final List<Camarero> camareros = Collections.synchronizedList(new ArrayList<>());
+    private final List<Barista> baristas = Collections.synchronizedList(new ArrayList<>());
     private final List<Cliente> clientes = Collections.synchronizedList(new ArrayList<>());
+
+    // Capacidad máxima de la cola de pedidos
+    private static final int MAX_PEDIDOS = 10;
 
     private final ExecutorService ejecutor = Executors.newCachedThreadPool();
     private volatile boolean enEjecucion = false;
@@ -22,6 +27,7 @@ public class Cafeteria {
 
     // Parámetros de la simulación
     private final int NUM_CAMAREROS = 5;
+    private final int NUM_BARISTAS = 3;
     private final int NUM_CLIENTES = 10;
     private int contadorClientesDinamicos = 0;
 
@@ -45,6 +51,13 @@ public class Cafeteria {
             Camarero c = new Camarero("Camarero-" + i, this);
             camareros.add(c);
             c.start();
+        }
+
+        // Crear baristas
+        for (int i = 1; i <= NUM_BARISTAS; i++) {
+            Barista b = new Barista("Barista-" + i, this);
+            baristas.add(b);
+            b.start();
         }
 
         // Crear clientes iniciales
@@ -75,10 +88,32 @@ public class Cafeteria {
         } catch (InterruptedException ignorado) {
             Thread.currentThread().interrupt();
         }
+        // Interrumpir y esperar a camareros
+        for (Camarero c : new ArrayList<>(camareros)) {
+            c.interrupt();
+            try {
+                c.join(1000);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        // Interrumpir y esperar a baristas
+        for (Barista b : new ArrayList<>(baristas)) {
+            b.interrupt();
+            try {
+                b.join(1000);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
         // Limpiar colecciones
         camareros.clear();
+        baristas.clear();
         clientes.clear();
         cola.clear();
+        colaPedidosPendientes.clear();
         contadorClientesDinamicos = 0;
         Platform.runLater(new Runnable() {
             @Override
@@ -125,6 +160,36 @@ public class Cafeteria {
     }
 
     /**
+     * Añade un pedido a la cola de pedidos pendientes (productor: camarero).
+     */
+    public void encolarPedido(Pedido p) throws InterruptedException {
+        colaPedidosPendientes.put(p);
+        registrar("Pedido añadido: " + p.getBebida() + " para " + p.getCliente().getNombre());
+        actualizarInterfaz();
+    }
+
+    /**
+     * Obtiene un pedido de la cola de pedidos pendientes con timeout (consumidor: barista).
+     */
+    public Pedido obtenerPedidoDesCola(long tiempoEsperaMs) throws InterruptedException {
+        return colaPedidosPendientes.poll(tiempoEsperaMs, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Obtiene el tamaño actual de la cola de pedidos pendientes.
+     */
+    public int getTamañoColaPedidos() {
+        return colaPedidosPendientes.size();
+    }
+
+    /**
+     * Obtiene la capacidad máxima de la cola de pedidos.
+     */
+    public int getCapacidadMaximaColaPedidos() {
+        return MAX_PEDIDOS;
+    }
+
+    /**
      * Registra un mensaje en el área de registro de la interfaz.
      */
     public void registrar(String mensaje) {
@@ -150,13 +215,10 @@ public class Cafeteria {
      * Actualiza la interfaz gráfica con los estados actuales.
      */
     private void actualizarInterfaz() {
-        // Construir listas de estados
-        List<String> estadosClientes;
+        // Construir listas de estados y objetos cliente
+        List<Cliente> clientesActuales;
         synchronized (clientes) {
-            estadosClientes = new ArrayList<>();
-            for (Cliente cl : clientes) {
-                estadosClientes.add(cl.getNombre() + " - " + cl.getEstado());
-            }
+            clientesActuales = new ArrayList<>(clientes);
         }
 
         List<String> estadosCamareros;
@@ -167,12 +229,24 @@ public class Cafeteria {
             }
         }
 
+        List<String> estadosBaristas;
+        synchronized (baristas) {
+            estadosBaristas = new ArrayList<>();
+            for (Barista b : baristas) {
+                estadosBaristas.add(b.getNombre() + " - " + b.getEstado());
+            }
+        }
+
+        int tamañoColaPedidos = colaPedidosPendientes.size();
+
         // Llamadas seguras al controlador
         Platform.runLater(new Runnable() {
             @Override
             public void run() {
-                controlador.actualizarListaClientes(estadosClientes);
+                controlador.actualizarListaClientes(clientesActuales);
                 controlador.actualizarListaCamareros(estadosCamareros);
+                controlador.actualizarListaBaristas(estadosBaristas);
+                controlador.actualizarBarraPedidos(tamañoColaPedidos, MAX_PEDIDOS);
             }
         });
     }

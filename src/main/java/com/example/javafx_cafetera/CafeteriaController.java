@@ -2,8 +2,12 @@ package com.example.javafx_cafetera;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 import java.util.List;
 
@@ -13,10 +17,13 @@ import java.util.List;
  */
 public class CafeteriaController {
     @FXML
-    private ListView<String> listaClientes;
+    private ListView<String> listaCamareros;
 
     @FXML
-    private ListView<String> listaCamareros;
+    private ListView<String> listaBaristas;
+
+    @FXML
+    private ListView<Cliente> listaClientes;
 
     @FXML
     private TextArea areaRegistro;
@@ -29,6 +36,12 @@ public class CafeteriaController {
 
     @FXML
     private Button botonAnadirCliente;
+
+    @FXML
+    private ProgressBar barraPedidos;
+
+    @FXML
+    private Label labelPedidos;
 
     private Cafeteria cafeteria;
 
@@ -45,6 +58,53 @@ public class CafeteriaController {
 
         botonReiniciar.setDisable(true);
         botonAnadirCliente.setDisable(true);
+
+        // Configurar CellFactory para listaClientes mostrando barra de paciencia
+        listaClientes.setCellFactory(new javafx.util.Callback<ListView<Cliente>, ListCell<Cliente>>() {
+            @Override
+            public ListCell<Cliente> call(ListView<Cliente> param) {
+                return new ListCell<Cliente>() {
+                    @Override
+                    protected void updateItem(Cliente item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setGraphic(null);
+                            setText(null);
+                        } else {
+                            // Crear HBox con nombre y barra de paciencia
+                            HBox celda = new HBox(8);
+                            celda.setPadding(new Insets(5));
+
+                            // Etiqueta con nombre y estado
+                            Label etiqueta = new Label(item.getNombre() + " - " + item.getEstado());
+                            etiqueta.setStyle("-fx-font-size: 11;");
+
+                            // ProgressBar de paciencia
+                            ProgressBar barraEspera = new ProgressBar();
+                            barraEspera.setPrefWidth(80);
+                            barraEspera.setStyle("-fx-padding: 2;");
+
+                            // Calcular progreso: (tiempo transcurrido) / (paciencia total)
+                            if (item.getTiempoInicioEspera() > 0 && item.getEstado().contains("Esperando")) {
+                                long tiempoTranscurrido = System.currentTimeMillis() - item.getTiempoInicioEspera();
+                                double progreso = (double) tiempoTranscurrido / item.getPacienciaMs();
+                                barraEspera.setProgress(Math.min(progreso, 1.0));
+                            } else {
+                                barraEspera.setProgress(0);
+                            }
+
+                            celda.getChildren().addAll(etiqueta, barraEspera);
+                            HBox.setHgrow(barraEspera, Priority.ALWAYS);
+                            setGraphic(celda);
+                        }
+                    }
+                };
+            }
+        });
+
+        if (barraPedidos != null) {
+            barraPedidos.setProgress(0);
+        }
     }
 
     /**
@@ -114,14 +174,14 @@ public class CafeteriaController {
     /**
      * Actualiza la lista de clientes en la interfaz.
      */
-    public void actualizarListaClientes(List<String> estadosClientes) {
+    public void actualizarListaClientes(List<Cliente> clientesActuales) {
         if (Platform.isFxApplicationThread()) {
-            listaClientes.getItems().setAll(estadosClientes);
+            listaClientes.getItems().setAll(clientesActuales);
         } else {
             Platform.runLater(new Runnable() {
                 @Override
                 public void run() {
-                    listaClientes.getItems().setAll(estadosClientes);
+                    listaClientes.getItems().setAll(clientesActuales);
                 }
             });
         }
@@ -138,6 +198,50 @@ public class CafeteriaController {
                 @Override
                 public void run() {
                     listaCamareros.getItems().setAll(estadosCamareros);
+                }
+            });
+        }
+    }
+
+    /**
+     * Actualiza la lista de baristas en la interfaz.
+     */
+    public void actualizarListaBaristas(List<String> estadosBaristas) {
+        if (Platform.isFxApplicationThread()) {
+            listaBaristas.getItems().setAll(estadosBaristas);
+        } else {
+            Platform.runLater(new Runnable() {
+                @Override
+                public void run() {
+                    listaBaristas.getItems().setAll(estadosBaristas);
+                }
+            });
+        }
+    }
+
+    /**
+     * Actualiza la barra de progreso de pedidos pendientes.
+     */
+    public void actualizarBarraPedidos(int actual, int maximo) {
+        if (Platform.isFxApplicationThread()) {
+            if (barraPedidos != null) {
+                double progreso = (double) actual / maximo;
+                barraPedidos.setProgress(Math.min(progreso, 1.0));
+            }
+            if (labelPedidos != null) {
+                labelPedidos.setText("Pedidos: " + actual + "/" + maximo);
+            }
+        } else {
+            Platform.runLater(new Runnable() {
+                @Override
+                public void run() {
+                    if (barraPedidos != null) {
+                        double progreso = (double) actual / maximo;
+                        barraPedidos.setProgress(Math.min(progreso, 1.0));
+                    }
+                    if (labelPedidos != null) {
+                        labelPedidos.setText("Pedidos: " + actual + "/" + maximo);
+                    }
                 }
             });
         }

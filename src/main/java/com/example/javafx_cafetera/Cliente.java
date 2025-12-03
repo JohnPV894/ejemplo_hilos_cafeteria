@@ -16,6 +16,9 @@ public class Cliente extends Thread {
     // Indicador de si fue servido
     private boolean servido = false;
 
+    // Tiempo de inicio de la espera para calcular paciencia restante
+    private volatile long tiempoInicioEspera = -1;
+
     /**
      * Constructor del cliente.
      * @param nombre El nombre del cliente.
@@ -43,6 +46,29 @@ public class Cliente extends Thread {
     }
 
     /**
+     * Obtiene la paciencia total del cliente en milisegundos.
+     */
+    public long getPacienciaMs() {
+        return pacienciaMs;
+    }
+
+    /**
+     * Obtiene el tiempo de inicio de la espera (usado para calcular la paciencia restante).
+     */
+    public long getTiempoInicioEspera() {
+        return tiempoInicioEspera;
+    }
+
+    /**
+     * Marca que el pedido fue tomado por el camarero y cambia el estado a "Esperando café".
+     */
+    public void marcarPedidoTomado() {
+        synchronized (this) {
+            estado = "Esperando café";
+        }
+    }
+
+    /**
      * Método ejecutado en el hilo del cliente.
      * Simula la llegada, espera con paciencia limitada y reacción según
      * haya sido notificado por el camarero o se haya agotado la paciencia.
@@ -61,7 +87,8 @@ public class Cliente extends Thread {
             cafeteria.encolarCliente(this);
 
             // Esperar a ser atendido usando wait/notify con timeout de paciencia
-            long inicio = System.currentTimeMillis();
+            tiempoInicioEspera = System.currentTimeMillis();
+            long inicio = tiempoInicioEspera;
             long restante = pacienciaMs;
             synchronized (this) {
                 while (!servido && restante > 0) {

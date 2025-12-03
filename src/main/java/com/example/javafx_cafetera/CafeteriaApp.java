@@ -17,7 +17,7 @@ public class CafeteriaApp extends Application {
     public void start(Stage escena) throws Exception {
         FXMLLoader cargador = new FXMLLoader(getClass().getResource("CafeteriaView.fxml"));
         Parent raiz = cargador.load();
-        Scene vista = new Scene(raiz, 800, 600);
+        Scene vista = new Scene(raiz, 1000, 600);
         // Cargar estilos globales
         try {
             String cssResource = getClass().getResource("/estilos.css").toExternalForm();
@@ -30,7 +30,4 @@ public class CafeteriaApp extends Application {
         escena.show();
     }
 
-    public static void main(String[] args) {
-        launch(args);
-    }
 }
